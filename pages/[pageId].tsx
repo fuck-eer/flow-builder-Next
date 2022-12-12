@@ -9,27 +9,31 @@ import axios from "axios";
 import { FileDataType } from "./api/getFlowDataFromFile/[pageId]";
 import Head from "next/head";
 import path from "path";
+import { getBaseURL } from "./api/saveFlowDataToFile";
 //! Getting file data from data/flowDatabase folder through ServerSideRendering
 export const getServerSideProps: GetServerSideProps = async (ctx) => {
-	const { query } = ctx;
+	const {
+		query: { pageId },
+	} = ctx;
 	try {
-		const pathToFile = path.join(process.cwd(), "data");
-		const buffer = await fs.readFile(
-			`${pathToFile}/flowDatabase/${query.pageId}.json`
-		);
-
-		const data = await JSON.parse(buffer.toString());
-		//if no data available through give 404 error
-		if (!data)
+		const { data, status } = await axios.get(`${getBaseURL()}${pageId}.json`);
+		if (status !== 200) {
 			return {
 				props: {
 					data: { discardCase: "serverError" },
 				},
 				notFound: true,
 			};
+		}
+		if (!data)
+			return {
+				props: {
+					data: { discardCase: "dataNotFound" },
+				},
+			};
 		//? added this time check as well not, if token time is less greater that this don't load data(2 days)
 		if (data.time < new Date().getTime() - 2 * 24 * 60 * 60 * 1000) {
-			void axios.delete(`/api/getFlowDataFromFile/${query.pageId}`);
+			void axios.delete(`${getBaseURL()}${pageId}.json`);
 			return {
 				props: {
 					data: { discardCase: "dataTooOld" },
@@ -45,7 +49,7 @@ export const getServerSideProps: GetServerSideProps = async (ctx) => {
 	} catch (e) {
 		return {
 			props: {
-				data: { discardCase: "dataNotFound" },
+				data: { discardCase: "serverError" },
 			},
 		};
 	}

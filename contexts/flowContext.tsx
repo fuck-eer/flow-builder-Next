@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useRouter } from "next/router";
 import React, { useContext, useState, useCallback, useEffect } from "react";
 import {
 	Node,
@@ -59,10 +60,10 @@ export const FlowContextProvider = ({
 	const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 	//? currently selected Node of the FLOW
 	const [currentNode, setCurrentNode] = useState<Node>();
-
+	const { replace } = useRouter();
 	//! Reset currently selected node on nodes state change
 	useEffect(() => {
-		onResetCurrent();
+		setCurrentNode(undefined);
 	}, [nodes.length]);
 
 	//! For alert banner
@@ -125,10 +126,6 @@ export const FlowContextProvider = ({
 		[currentNode?.id, setNodes]
 	);
 
-	const onResetCurrent = useCallback(() => {
-		setCurrentNode(undefined);
-	}, []);
-
 	//! saving data to json file on server and session to local storage for reloads and stuff (You know just like a cloud.LOL) ⛅
 	const onSave = useCallback(
 		(id: string) => {
@@ -169,12 +166,17 @@ export const FlowContextProvider = ({
 			discardCase?: string
 		) => {
 			if (discardCase === "dataTooOld") {
-				onToast("Can't load Image too old", "dark-1", true);
+				onToast("Data was too old,So created a new Sesh", "dark-1", true);
 				localStorage.removeItem("sessionData");
 				return;
 			} else if (discardCase === "dataNotFound") {
 				onToast("Created a new Session for you!", "blue-1", true);
 				localStorage.removeItem("sessionData");
+				return;
+			} else if (discardCase === "serverError") {
+				onToast("Something Bad happened,Please Re-Try!", "pink-1", true);
+				localStorage.removeItem("sessionData");
+				replace("/500");
 				return;
 			}
 			//fill loacal storage
@@ -186,7 +188,7 @@ export const FlowContextProvider = ({
 			setEdges(edges || []);
 			onToast("Data Restored Successfully", "yellow-1", true);
 		},
-		[setEdges, setNodes, onToast]
+		[setEdges, setNodes, onToast, replace]
 	);
 	return (
 		<FlowContext.Provider

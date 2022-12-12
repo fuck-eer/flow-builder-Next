@@ -1,3 +1,5 @@
+import { getBaseURL } from "./../saveFlowDataToFile";
+import axios from "axios";
 import apiHandler from "../../../lib/apiHandler";
 import UserFacingError from "../../../utils/UserFacingError";
 import { promises as fs } from "fs";
@@ -15,21 +17,20 @@ type ResponseType = {
 	message: string;
 };
 //! fetching data back from  files on being called upon
-export default apiHandler<ResponseType>((req, res) => {
+export default apiHandler<ResponseType>(async (req, res) => {
 	if (req.method !== "GET") {
 		throw new UserFacingError("invalid request: incorrect method", 405);
 	}
 	const { pageId } = req.query as { pageId: string };
-	const pathToFile = path.join(process.cwd(), "data");
-	return fs
-		.readFile(`${pathToFile}/flowDatabase/${pageId}.json`)
-		.then((e) => {
-			res.status(200).send({
-				data: JSON.parse(e.toString()) as FileDataType,
-				message: "Data Restored Successfully!",
-			});
-		})
-		.catch((e) => {
-			throw new UserFacingError("Unable to fetch data form this file", 404);
-		});
+	const { data, status } = await axios.get(`${getBaseURL()}${pageId}.json`);
+	if (status !== 200) {
+		throw new UserFacingError("Unknown Error Occurred", status);
+	}
+	if (!data) {
+		throw new UserFacingError("Data not Found", status);
+	}
+	return res.status(status).send({
+		data: data as FileDataType,
+		message: "Data Restored Successfully!",
+	});
 });
